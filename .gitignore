@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Runtime / logs / temp
+*.log
+tmp/
+*.zip
+
+# Device data (nu versiona misiuni/poze)
+data/
+envmon-device/data/
+agent/storage/missions/
+agent/storage/calibration/*.json
+
+# Secrets
+.env
+*.pem
