@@ -148,7 +148,7 @@ def run_mission(
     write_meta(mdir, meta)
 
     set_state("RUNNING", mission_id=mission_id, profile=profile, warnings=warnings)
-    emit(mission_id, "INFO", "Mission started.", mission_id=mission_id)
+    emit(mission_id, "INFO", "Mission started.")
 
     dt = 1.0 / max(sample_hz, 0.1)
     next_photo = time.time()
