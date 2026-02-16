@@ -8,9 +8,11 @@ import adafruit_bme680
 CAL_DIR = Path(__file__).resolve().parents[1] / "storage" / "calibration"
 CAL_FILE = CAL_DIR / "bme680_baseline.json"
 
+
 def _open_sensor():
     i2c = busio.I2C(board.SCL, board.SDA)
     return adafruit_bme680.Adafruit_BME680_I2C(i2c, address=0x77)
+
 
 def calibrate_bme680(warmup_s: int = 60, sample_s: int = 180, interval_s: float = 1.0) -> dict:
     CAL_DIR.mkdir(parents=True, exist_ok=True)
@@ -50,14 +52,8 @@ def calibrate_bme680(warmup_s: int = 60, sample_s: int = 180, interval_s: float 
     CAL_FILE.write_text(json.dumps(baseline, indent=2), encoding="utf-8")
     return baseline
 
+
 def load_bme680_baseline() -> dict | None:
     if not CAL_FILE.exists():
         return None
     return json.loads(CAL_FILE.read_text(encoding="utf-8"))	
-
-
-
-
-
-
-
