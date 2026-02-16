@@ -7,9 +7,11 @@ import threading
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request, send_file
+import time
+import json
 
 from agent.runtime.device_state import set_state, read_state
-from agent.storage.mission_store import new_mission_id
+from agent.storage.mission_store import new_mission_id, create_mission_folder, write_meta
 
 missions_bp = Blueprint("missions", __name__)
 
@@ -163,7 +165,26 @@ def _watch_and_reap(proc: subprocess.Popen, mission_id: str):
 @missions_bp.get("/missions")
 def list_missions():
     MISSIONS_DIR.mkdir(parents=True, exist_ok=True)
-    missions = sorted([p.name for p in MISSIONS_DIR.iterdir() if p.is_dir()], reverse=True)
+
+    valid = []
+    incomplete = []
+    missions_meta: dict[str, dict] = {}
+
+    for p in sorted(MISSIONS_DIR.iterdir(), key=lambda x: x.name, reverse=True):
+        if not p.is_dir():
+            continue
+        meta_path = p / "meta.json"
+        if not meta_path.exists():
+            incomplete.append(p.name)
+            continue
+        try:
+            missions_meta[p.name] = json.loads(meta_path.read_text(encoding="utf-8"))
+            valid.append(p.name)
+        except Exception:
+            # unreadable/corrupt meta -> treat as incomplete
+            incomplete.append(p.name)
+
+    missions = valid
 
     running, pid = _is_running()
     st = read_state()
@@ -178,7 +199,11 @@ def list_missions():
         st["running"] = False
         st["pid"] = None
 
-    return jsonify({"missions": missions, **st})
+    # keep backward-compatible `missions` (list of ids) + expose incomplete/meta
+    resp = {"missions": missions, "incomplete_missions": incomplete, **st}
+    if missions_meta:
+        resp["missions_meta"] = missions_meta
+    return jsonify(resp)
 
 
 @missions_bp.post("/missions/start")
@@ -207,6 +232,25 @@ def start_mission():
 
     mission_id = new_mission_id()
 
+    # create mission dir + initial meta so mission is visible immediately
+    mdir = create_mission_folder(mission_id)
+    write_meta(mdir, {
+        "mission_id": mission_id,
+        "created_at_epoch": int(time.time()),
+        "profile": {
+            "duration_s": duration,
+            "sample_hz": sample_hz,
+            "photo_every_s": photo_every,
+            "gps_mode": gps_mode,
+            "camera_mode": camera_mode,
+            "location_mode": location_mode,
+            "fixed_location": {"lat": fixed_lat, "lon": fixed_lon, "alt_m": fixed_alt},
+            "gps_timeout_s": gps_timeout,
+            "gps_stable_s": gps_stable,
+        },
+        "notes": "Initialized by API; logger will update on start.",
+    })
+
     cmd = [
         sys.executable, "-m", "agent.logger",
         "--mission-id", mission_id,
@@ -231,15 +275,21 @@ def start_mission():
     log_path.parent.mkdir(parents=True, exist_ok=True)
     log_f = log_path.open("a", encoding="utf-8")
 
-    proc = subprocess.Popen(
-        cmd,
-        cwd=str(PROJECT_ROOT),
-        stdout=log_f,
-        stderr=subprocess.STDOUT,
-        start_new_session=True,  # creates its own process group
-    )
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(PROJECT_ROOT),
+            stdout=log_f,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,  # creates its own process group
+        )
+    except Exception:
+        log_f.close()
+        raise
 
     PID_FILE.write_text(str(proc.pid), encoding="utf-8")
+    # close parent's copy of the FD (child inherited it)
+    log_f.close()
 
     profile = {
         "duration_s": duration,
