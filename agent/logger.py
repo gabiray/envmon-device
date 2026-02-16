@@ -55,11 +55,17 @@ def _event_path(mission_id: str) -> Path:
     return MISSIONS_DIR / mission_id / "events.jsonl"
 
 
-def emit(mission_id: str, level: str, msg: str, **fields):
-    ev = {"ts_epoch": round(time.time(), 3), "level": level, "msg": msg, **fields}
+def emit(mid: str, level: str, msg: str, **fields):
+    ev = {
+        "ts_epoch": round(time.time(), 3),
+        "level": level,
+        "msg": msg,
+        **fields,
+        "mission_id": mid,
+    }
     try:
-        _event_path(mission_id).parent.mkdir(parents=True, exist_ok=True)
-        with _event_path(mission_id).open("a", encoding="utf-8") as f:
+        _event_path(mid).parent.mkdir(parents=True, exist_ok=True)
+        with _event_path(mid).open("a", encoding="utf-8") as f:
             f.write(json.dumps(ev, ensure_ascii=False) + "\n")
     except Exception:
         pass
