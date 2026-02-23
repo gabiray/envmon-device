@@ -7,7 +7,7 @@ from pathlib import Path
 
 from agent.calibration.bme680_baseline import load_bme680_baseline
 from agent.calibration.gps_fix import wait_for_gps_fix
-from agent.runtime.device_state import set_state
+from agent.runtime.device_state import set_state, set_gps_status
 from agent.sensors.bme680_reader import BME680Reader
 from agent.sensors.camera_capture import capture_image
 from agent.sensors.gps_reader import GPSReader
@@ -104,7 +104,7 @@ def run_mission(
     # Pre-flight baseline (optional)
     bme_baseline = load_bme680_baseline()
 
-    # GPS preflight depending on mode
+    # GPS preflight depending on mode (ONLY before start)
     gps_ready = None
     if gps_mode == "required":
         emit(mission_id, "INFO", "Waiting for required GPS fix...")
@@ -160,6 +160,14 @@ def run_mission(
     next_photo = time.time()
     img_counter = 0
 
+    # GPS tracking helpers
+    last_good_fix = None
+    gps_has_fix_prev = False
+    gps_online_prev = False
+    last_gps_seen = None
+    last_state_gps_write = 0.0
+    GPS_STALE_S = 3.0  # if no GGA for this long => GPS stream considered offline
+
     t0 = time.time()
     exit_code = 0
 
@@ -167,27 +175,76 @@ def run_mission(
         while (not _stop_event.is_set()) and (time.time() - t0 < duration_s):
             now = time.time()
 
-            # GPS / Location
+            # -------- Location / GPS --------
             lat = lon = alt_m = None
-            fix_q = sats = 0
+            fix_q = 0
+            sats = 0
             hdop = 99.99
+            gps_has_fix = False
+            gps_online = False
 
             if location_mode == "fixed":
                 lat, lon, alt_m = fixed_lat, fixed_lon, fixed_alt
+                # keep fix_q=0 because it's not a GPS fix; it's a fixed reference
+                gps_online = False
+                gps_has_fix = False
+
             elif location_mode == "none":
                 pass
+
             else:
-                # gps
-                if gps is not None:
-                    g = gps.read_gga()
-                    lat = g.get("lat")
-                    lon = g.get("lon")
-                    alt_m = g.get("alt_m")
+                # gps tracking mode
+                g = gps.read_gga(max_wait_s=0.25) if gps is not None else None
+
+                if g:
+                    last_gps_seen = now
                     fix_q = g.get("fix_quality", 0) or 0
                     sats = g.get("satellites", 0) or 0
                     hdop = g.get("hdop", 99.99) or 99.99
 
-            # BME
+                    lat_g = g.get("lat")
+                    lon_g = g.get("lon")
+                    alt_g = g.get("alt_m")
+
+                    gps_has_fix = bool(fix_q > 0 and lat_g is not None and lon_g is not None)
+                    if gps_has_fix:
+                        last_good_fix = {
+                            "ts_epoch": round(now, 3),
+                            "fix_quality": fix_q,
+                            "satellites": sats,
+                            "hdop": hdop,
+                            "lat": lat_g,
+                            "lon": lon_g,
+                            "alt_m": alt_g,
+                        }
+
+                    # write lat/lon only when fix is valid
+                    lat = lat_g if gps_has_fix else None
+                    lon = lon_g if gps_has_fix else None
+                    alt_m = alt_g if gps_has_fix else None
+                else:
+                    # no new GGA in time budget -> keep lat/lon None, but mission continues
+                    fix_q = 0
+                    sats = 0
+                    hdop = 99.99
+                    gps_has_fix = False
+
+                gps_online = bool(last_gps_seen and (now - last_gps_seen) <= GPS_STALE_S)
+
+                # events on transitions
+                if gps_has_fix_prev and not gps_has_fix:
+                    emit(mission_id, "WARN", "GPS fix lost.", last_good_fix=last_good_fix)
+                if (not gps_has_fix_prev) and gps_has_fix:
+                    emit(mission_id, "INFO", "GPS fix regained.", fix=last_good_fix)
+                gps_has_fix_prev = gps_has_fix
+
+                if gps_online_prev and not gps_online:
+                    emit(mission_id, "WARN", "GPS stream offline (no NMEA).")
+                if (not gps_online_prev) and gps_online:
+                    emit(mission_id, "INFO", "GPS stream online.")
+                gps_online_prev = gps_online
+
+            # -------- BME --------
             b = bme.read()
 
             row = {
@@ -202,7 +259,20 @@ def run_mission(
             }
             append_csv_row(telemetry_path, TELEMETRY_HEADER, row)
 
-            # Photo
+            # write GPS snapshot to device state (1 Hz)
+            if now - last_state_gps_write >= 1.0:
+                set_gps_status({
+                    "online": gps_online,
+                    "has_fix": gps_has_fix,
+                    "last_seen_epoch": round(last_gps_seen, 3) if last_gps_seen else None,
+                    "fix_quality": fix_q,
+                    "satellites": sats,
+                    "hdop": hdop,
+                    "last_good_fix": last_good_fix,
+                })
+                last_state_gps_write = now
+
+            # -------- Photo --------
             if camera_mode == "on" and photo_every_s > 0 and now >= next_photo:
                 img_counter += 1
                 filename = f"{img_counter:06d}.jpg"
@@ -224,6 +294,7 @@ def run_mission(
 
             time.sleep(dt)
 
+        # stop outcome
         if _stop_event.is_set() and _stop_reason == "ABORT":
             set_state("ABORTED", mission_id=mission_id, profile=profile, warnings=warnings)
             emit(mission_id, "WARN", "Mission aborted by user.")
@@ -243,6 +314,7 @@ def run_mission(
 
         meta["ended_at_epoch"] = int(time.time())
         meta["stop_reason"] = _stop_reason if _stop_event.is_set() else "TIMER"
+        meta["last_good_fix"] = last_good_fix
         write_meta(mdir, meta)
 
         # back to IDLE

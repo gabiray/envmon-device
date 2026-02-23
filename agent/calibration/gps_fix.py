@@ -11,14 +11,60 @@ def _nmea_to_decimal(deg_min: str, hemisphere: str) -> float | None:
     except ValueError:
         return None
 
-    deg_len = 2 if hemisphere in ("N", "S") else 3
-    deg = int(v // 100) if deg_len == 2 else int(v // 100)
+    # N/S => ddmm.mmmm ; E/W => dddmm.mmmm
+    deg = int(v // 100)
     minutes = v - deg * 100
     dec = deg + minutes / 60.0
 
     if hemisphere in ("S", "W"):
         dec = -dec
     return dec
+
+
+def parse_gga_line(line: str) -> dict | None:
+    """
+    Parses a $GPGGA / $GNGGA line into a dict.
+    Returns None if not a valid GGA sentence.
+    """
+    if not line or not line.startswith("$") or "GGA" not in line:
+        return None
+
+    p = line.split(",")
+    if len(p) < 10 or not p[0].endswith("GGA"):
+        return None
+
+    try:
+        fix_q = int(p[6] or "0")
+    except ValueError:
+        fix_q = 0
+
+    try:
+        sats = int(p[7] or "0")
+    except ValueError:
+        sats = 0
+
+    try:
+        hdop = float(p[8] or "99.99")
+    except ValueError:
+        hdop = 99.99
+
+    lat = _nmea_to_decimal(p[2], p[3])
+    lon = _nmea_to_decimal(p[4], p[5])
+
+    try:
+        alt_m = float(p[9]) if p[9] else None
+    except ValueError:
+        alt_m = None
+
+    return {
+        "fix_quality": fix_q,
+        "satellites": sats,
+        "hdop": hdop,
+        "lat": lat,
+        "lon": lon,
+        "alt_m": alt_m,
+        "raw": line,
+    }
 
 
 def wait_for_gps_fix(
@@ -30,63 +76,31 @@ def wait_for_gps_fix(
     timeout_s: int = 180,
     verbose: bool = True,
 ):
-
-    def parse_gga(line: str):
-        # $GPGGA / $GNGGA
-        p = line.split(",")
-        if len(p) < 10:
-            return None
-        if not p[0].endswith("GGA"):
-            return None
-
-        try:
-            fix_q = int(p[6] or "0")
-        except ValueError:
-            fix_q = 0
-
-        try:
-            sats = int(p[7] or "0")
-        except ValueError:
-            sats = 0
-
-        try:
-            hdop = float(p[8] or "99.99")
-        except ValueError:
-            hdop = 99.99
-
-        lat = _nmea_to_decimal(p[2], p[3])
-        lon = _nmea_to_decimal(p[4], p[5])
-
-        try:
-            alt_m = float(p[9]) if p[9] else None
-        except ValueError:
-            alt_m = None
-
-        return fix_q, sats, hdop, lat, lon, alt_m
-
+    """
+    Waits until GPS has a stable fix for stable_seconds, or until timeout.
+    Returns last good fix dict (may be None if nothing good was ever seen).
+    """
     start = time.time()
     ok_since = None
     last_good = None
 
-    with serial.Serial(port, baud, timeout=2) as ser:
+    with serial.Serial(port, baud, timeout=0.2) as ser:
         while time.time() - start < timeout_s:
             raw = ser.read_until(b"\n").decode(errors="ignore").strip()
-
-            if not raw.startswith("$"):
-                continue
-            if "GGA" not in raw:
-                continue
-
-            parsed = parse_gga(raw)
+            parsed = parse_gga_line(raw)
             if not parsed:
                 continue
 
-            fix_q, sats, hdop, lat, lon, alt_m = parsed
+            fix_q = parsed["fix_quality"]
+            sats = parsed["satellites"]
+            hdop = parsed["hdop"]
+            lat = parsed["lat"]
+            lon = parsed["lon"]
 
             if verbose:
                 print(
                     f"GPS: fix_q={fix_q} sats={sats} hdop={hdop:.2f} "
-                    f"lat={lat} lon={lon} alt={alt_m} | {raw}"
+                    f"lat={lat} lon={lon} alt={parsed.get('alt_m')} | {raw}"
                 )
 
             good = (
@@ -107,7 +121,7 @@ def wait_for_gps_fix(
                     "hdop": hdop,
                     "lat": lat,
                     "lon": lon,
-                    "alt_m": alt_m,
+                    "alt_m": parsed.get("alt_m"),
                 }
 
                 if time.time() - ok_since >= stable_seconds:

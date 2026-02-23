@@ -38,7 +38,6 @@ def status():
     if PID_FILE.exists():
         try:
             pid = int(PID_FILE.read_text().strip())
-            # zombie => not running
             running = _pid_running_non_zombie(pid)
             if not running:
                 PID_FILE.unlink(missing_ok=True)
@@ -47,7 +46,6 @@ def status():
             running = False
             pid = None
 
-    # Fix stale state if needed
     if st.get("state") in ("ARMING", "RUNNING") and not running:
         set_state("IDLE", mission_id=None, profile=None, warnings=["Stale RUNNING state corrected."], error=None, pid=None)
         st = read_state()
