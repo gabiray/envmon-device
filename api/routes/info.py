@@ -5,6 +5,7 @@ import json, uuid, socket
 info_bp = Blueprint("info", __name__)
 ID_FILE = Path(__file__).resolve().parents[2] / "agent" / "storage" / "device_id.json"
 
+
 def get_or_create_uuid():
     ID_FILE.parent.mkdir(parents=True, exist_ok=True)
     if ID_FILE.exists():
@@ -17,6 +18,7 @@ def get_or_create_uuid():
     u = str(uuid.uuid4())
     ID_FILE.write_text(json.dumps({"device_uuid": u}, indent=2), encoding="utf-8")
     return u
+
 
 @info_bp.get("/info")
 def info():

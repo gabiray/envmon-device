@@ -15,14 +15,12 @@ from agent.storage.mission_store import new_mission_id, create_mission_folder, w
 
 missions_bp = Blueprint("missions", __name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]  # .../envmon-device
+PROJECT_ROOT = Path(__file__).resolve().parents[2] 
 MISSIONS_DIR = PROJECT_ROOT / "agent" / "storage" / "missions"
 PID_FILE = Path("/tmp/envmon_logger.pid")
 
 
-# ---------------------------
 # Process helpers
-# ---------------------------
 def _proc_state(pid: int) -> str | None:
     """
     Returns Linux process state letter from /proc/<pid>/stat:
@@ -159,9 +157,7 @@ def _watch_and_reap(proc: subprocess.Popen, mission_id: str):
         )
 
 
-# ---------------------------
 # Routes
-# ---------------------------
 @missions_bp.get("/missions")
 def list_missions():
     MISSIONS_DIR.mkdir(parents=True, exist_ok=True)

@@ -19,7 +19,7 @@ def health():
     except Exception as e:
         result["ok"] = False
         result["checks"]["bme680"] = {"ok": False, "error": str(e)}
-        return jsonify(result)  # stop here, required
+        return jsonify(result)  
 
     # GPS (optional -> warning)
     try:
