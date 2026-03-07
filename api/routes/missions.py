@@ -229,6 +229,9 @@ def start_mission():
     gps_stable = int(payload.get("gps_stable_s", 5))
 
     mission_id = new_mission_id()
+    
+    if not mission_name:
+        mission_name = mission_id
 
     # create mission dir + initial meta so mission is visible immediately
     mdir = create_mission_folder(mission_id)
@@ -308,7 +311,13 @@ def start_mission():
     # Start background reaper to avoid zombies
     threading.Thread(target=_watch_and_reap, args=(proc, mission_id), daemon=True).start()
 
-    return jsonify({"ok": True, "pid": proc.pid, "mission_id": mission_id, "profile": profile})
+    return jsonify({
+        "ok": True,
+        "pid": proc.pid,
+        "mission_id": mission_id,
+        "mission_name": mission_name,
+        "profile": profile,
+    })
 
 
 @missions_bp.post("/missions/stop")
