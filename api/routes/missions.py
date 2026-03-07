@@ -212,6 +212,9 @@ def start_mission():
 
     mission_name = str(payload.get("mission_name") or "").strip()
     
+    profile_type = str(payload.get("profile_type") or "").strip()
+    profile_label = str(payload.get("profile_label") or "").strip()
+    
     duration = int(payload.get("duration", 60))
     sample_hz = float(payload.get("sample_hz", 2.0))
     photo_every = int(payload.get("photo_every", 5))
@@ -238,6 +241,8 @@ def start_mission():
     write_meta(mdir, {
         "mission_id": mission_id,
         "mission_name": mission_name,
+        "profile_type": profile_type,
+        "profile_label": profile_label,
         "created_at_epoch": int(time.time()),
         "profile": {
             "duration_s": duration,
@@ -257,6 +262,8 @@ def start_mission():
         sys.executable, "-m", "agent.logger",
         "--mission-id", mission_id,
         "--mission-name", mission_name,
+        "--profile-type", profile_type,
+        "--profile-label", profile_label,
         "--duration", str(duration),
         "--sample-hz", str(sample_hz),
         "--photo-every", str(photo_every),
@@ -316,6 +323,8 @@ def start_mission():
         "pid": proc.pid,
         "mission_id": mission_id,
         "mission_name": mission_name,
+        "profile_type": profile_type,
+        "profile_label": profile_label,
         "profile": profile,
     })
 

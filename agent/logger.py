@@ -75,6 +75,8 @@ def emit(mid: str, level: str, msg: str, **fields):
 def run_mission(
     mission_id: str,
     mission_name: str,
+    profile_type: str,
+    profile_label: str,
     duration_s: int,
     sample_hz: float,
     photo_every_s: int,
@@ -147,6 +149,8 @@ def run_mission(
     meta = {
         "mission_id": mission_id,
         "mission_name": mission_name,
+        "profile_type": profile_type,
+        "profile_label": profile_label,
         "started_at_epoch": int(time.time()),
         "profile": profile,
         "bme_baseline": bme_baseline,
@@ -330,6 +334,9 @@ if __name__ == "__main__":
 
     p.add_argument("--mission-id", type=str, default=None)
     p.add_argument("--mission-name", type=str, default="")
+    
+    p.add_argument("--profile-type", type=str, default="")
+    p.add_argument("--profile-label", type=str, default="")
 
     p.add_argument("--duration", type=int, default=60)
     p.add_argument("--sample-hz", type=float, default=2.0)
@@ -350,10 +357,15 @@ if __name__ == "__main__":
 
     mid = args.mission_id or new_mission_id()
     mission_name = str(args.mission_name or "").strip() or mid
+    
+    profile_type = str(args.profile_type or "").strip()
+    profile_label = str(args.profile_label or "").strip()
 
     code = run_mission(
         mission_id=mid,
         mission_name=mission_name,
+        profile_type=profile_type,
+        profile_label=profile_label,
         duration_s=args.duration,
         sample_hz=args.sample_hz,
         photo_every_s=args.photo_every,
