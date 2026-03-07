@@ -74,6 +74,7 @@ def emit(mid: str, level: str, msg: str, **fields):
 
 def run_mission(
     mission_id: str,
+    mission_name: str,
     duration_s: int,
     sample_hz: float,
     photo_every_s: int,
@@ -145,6 +146,7 @@ def run_mission(
 
     meta = {
         "mission_id": mission_id,
+        "mission_name": mission_name,
         "started_at_epoch": int(time.time()),
         "profile": profile,
         "bme_baseline": bme_baseline,
@@ -175,7 +177,7 @@ def run_mission(
         while (not _stop_event.is_set()) and (time.time() - t0 < duration_s):
             now = time.time()
 
-            # -------- Location / GPS --------
+            # Location / GPS 
             lat = lon = alt_m = None
             fix_q = 0
             sats = 0
@@ -244,7 +246,7 @@ def run_mission(
                     emit(mission_id, "INFO", "GPS stream online.")
                 gps_online_prev = gps_online
 
-            # -------- BME --------
+            # BME 
             b = bme.read()
 
             row = {
@@ -272,7 +274,7 @@ def run_mission(
                 })
                 last_state_gps_write = now
 
-            # -------- Photo --------
+            # Photo 
             if camera_mode == "on" and photo_every_s > 0 and now >= next_photo:
                 img_counter += 1
                 filename = f"{img_counter:06d}.jpg"
@@ -327,6 +329,7 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
 
     p.add_argument("--mission-id", type=str, default=None)
+    p.add_argument("--mission-name", type=str, default="")
 
     p.add_argument("--duration", type=int, default=60)
     p.add_argument("--sample-hz", type=float, default=2.0)
@@ -346,9 +349,11 @@ if __name__ == "__main__":
     args = p.parse_args()
 
     mid = args.mission_id or new_mission_id()
+    mission_name = str(args.mission_name or "").strip() or mid
 
     code = run_mission(
         mission_id=mid,
+        mission_name=mission_name,
         duration_s=args.duration,
         sample_hz=args.sample_hz,
         photo_every_s=args.photo_every,

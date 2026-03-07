@@ -210,6 +210,8 @@ def start_mission():
 
     payload = request.get_json(silent=True) or {}
 
+    mission_name = str(payload.get("mission_name") or "").strip()
+    
     duration = int(payload.get("duration", 60))
     sample_hz = float(payload.get("sample_hz", 2.0))
     photo_every = int(payload.get("photo_every", 5))
@@ -232,6 +234,7 @@ def start_mission():
     mdir = create_mission_folder(mission_id)
     write_meta(mdir, {
         "mission_id": mission_id,
+        "mission_name": mission_name,
         "created_at_epoch": int(time.time()),
         "profile": {
             "duration_s": duration,
@@ -250,6 +253,7 @@ def start_mission():
     cmd = [
         sys.executable, "-m", "agent.logger",
         "--mission-id", mission_id,
+        "--mission-name", mission_name,
         "--duration", str(duration),
         "--sample-hz", str(sample_hz),
         "--photo-every", str(photo_every),

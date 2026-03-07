@@ -77,7 +77,7 @@ def gps_warmup():
     max_hdop = float(payload.get("max_hdop") or 4.0)
 
     stable_seconds = int(payload.get("stable_seconds") or 5)
-    timeout_s = int(payload.get("timeout_s") or 60)  # warmup default 60s (not 180)
+    timeout_s = int(payload.get("timeout_s") or 60) 
 
     verbose = bool(payload.get("verbose") or False)
 
