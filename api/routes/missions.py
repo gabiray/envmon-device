@@ -373,3 +373,53 @@ def export_mission(mission_id: str):
 
     shutil.make_archive(str(out_zip).replace(".zip", ""), "zip", str(mdir))
     return send_file(str(out_zip), as_attachment=True, download_name=f"{mission_id}.zip")
+
+
+# 28.03.2026
+@missions_bp.patch("/missions/<mission_id>")
+def rename_mission(mission_id: str):
+    mdir = MISSIONS_DIR / mission_id
+    meta_path = mdir / "meta.json"
+
+    if not mdir.exists() or not meta_path.exists():
+        return jsonify({"ok": False, "error": "Mission not found"}), 404
+
+    payload = request.get_json(silent=True) or {}
+    mission_name = str(payload.get("mission_name") or "").strip()
+
+    if not mission_name:
+        return jsonify({"ok": False, "error": "mission_name required"}), 400
+
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except Exception:
+        return jsonify({"ok": False, "error": "Mission meta is unreadable"}), 500
+
+    meta["mission_name"] = mission_name
+    meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    return jsonify({
+        "ok": True,
+        "mission_id": mission_id,
+        "mission_name": mission_name,
+    })
+
+
+@missions_bp.delete("/missions/<mission_id>")
+def delete_mission(mission_id: str):
+    running, pid = _is_running()
+    st = read_state()
+
+    if running and st.get("mission_id") == mission_id:
+        return jsonify({"ok": False, "error": "Cannot delete a running mission"}), 409
+
+    mission_dir = MISSIONS_DIR / mission_id
+    if not mission_dir.exists():
+        return jsonify({"ok": False, "error": "Mission not found"}), 404
+
+    try:
+        shutil.rmtree(mission_dir)
+        return jsonify({"ok": True, "mission_id": mission_id})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
