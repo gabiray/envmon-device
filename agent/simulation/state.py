@@ -2,6 +2,8 @@ import json
 import time
 from pathlib import Path
 
+from agent.runtime.device_state import set_gps_status
+
 SIM_DIR = Path(__file__).resolve().parents[1] / "storage" / "simulation"
 SIM_STATE_FILE = SIM_DIR / "simulation_state.json"
 
@@ -94,4 +96,49 @@ def disarm_simulation() -> dict:
     state["armed"] = False
     state["enabled"] = False
     return save_simulation_state(state)
-  
+
+def set_simulation_standby_gps(first_point: dict) -> dict:
+    """
+    Publish a simulated GPS fix in device_state while the simulator is armed
+    but the mission has not started yet.
+    """
+    now = round(time.time(), 3)
+
+    lat = float(first_point["lat"])
+    lon = float(first_point["lon"])
+    alt_m = float(first_point.get("alt_m") or 0.0)
+
+    gps = {
+        "online": True,
+        "has_fix": True,
+        "last_seen_epoch": now,
+        "fix_quality": 1,
+        "satellites": 12,
+        "hdop": 0.8,
+        "last_good_fix": {
+            "ts_epoch": now,
+            "fix_quality": 1,
+            "satellites": 12,
+            "hdop": 0.8,
+            "lat": lat,
+            "lon": lon,
+            "alt_m": alt_m,
+        },
+    }
+    return set_gps_status(gps)
+
+
+def clear_simulation_standby_gps() -> dict:
+    """
+    Clear the standby GPS snapshot when simulation is disarmed.
+    """
+    gps = {
+        "online": False,
+        "has_fix": False,
+        "last_seen_epoch": None,
+        "fix_quality": 0,
+        "satellites": 0,
+        "hdop": 99.99,
+        "last_good_fix": None,
+    }
+    return set_gps_status(gps)

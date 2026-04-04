@@ -8,8 +8,9 @@ from agent.simulation.state import (
     load_simulation_state,
     arm_simulation,
     clear_simulation,
+    set_simulation_standby_gps,
+    clear_simulation_standby_gps,
 )
-
 
 def _format_epoch(epoch: int | None) -> str:
     if not epoch:
@@ -60,6 +61,14 @@ def cmd_status(args) -> int:
 
 def cmd_clear(args) -> int:
     state = clear_simulation()
+
+    # SIMULATION:
+    # Remove the standby GPS snapshot when simulation is disarmed.
+    try:
+        clear_simulation_standby_gps()
+    except Exception as e:
+        print(f"Warning: failed to clear standby GPS snapshot: {e}", file=sys.stderr)
+
     print("Simulation state cleared.\n")
     print(json.dumps(state, indent=2))
     return 0
@@ -85,6 +94,16 @@ def cmd_arm(args) -> int:
         press_trend=args.press_trend,
         gas_trend=args.gas_trend,
     )
+
+    # SIMULATION:
+    # Publish the first route point as an idle standby GPS fix so that
+    # Dashboard / Check status can already see a valid location before mission start.
+    try:
+        waypoints = route.get("waypoints") or []
+        if waypoints:
+            set_simulation_standby_gps(waypoints[0])
+    except Exception as e:
+        print(f"Warning: failed to publish standby GPS snapshot: {e}", file=sys.stderr)
 
     print("Simulation armed successfully.\n")
     print(f"Selected route: {route['id']}")

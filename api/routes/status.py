@@ -7,6 +7,8 @@ from flask import Blueprint, jsonify, request
 from agent.runtime.device_state import read_state, set_state, set_gps_status
 from agent.sensors.gps_reader import GPSReader
 
+from agent.simulation.state import load_simulation_state
+
 status_bp = Blueprint("status", __name__)
 PID_FILE = Path("/tmp/envmon_logger.pid")
 
@@ -116,33 +118,37 @@ def status():
 
     # IMPORTANT:
     # - if mission is running, trust GPS snapshot maintained by logger
-    # - if device is idle, refresh GPS live here
+    # - if device is idle and simulation is armed, keep simulated standby GPS
+    # - otherwise, refresh real GPS live here
     if not running:
-        try:
-            max_wait_s = float(request.args.get("gps_wait_s") or 1.5)
-        except Exception:
-            max_wait_s = 1.5
+        sim_state = load_simulation_state()
+        sim_armed = bool(sim_state.get("enabled") and sim_state.get("armed"))
 
-        try:
-            live_gps = _read_live_gps_snapshot(max_wait_s=max_wait_s)
+        # SIMULATION:
+        # When a scenario is armed but mission has not started yet,
+        # keep the standby GPS snapshot already published from the first waypoint.
+        if not sim_armed:
+            try:
+                max_wait_s = float(request.args.get("gps_wait_s") or 1.5)
+            except Exception:
+                max_wait_s = 1.5
 
-            prev_last_good = (st.get("gps") or {}).get("last_good_fix")
-            if live_gps.get("last_good_fix") is None and prev_last_good:
-                live_gps["last_good_fix"] = prev_last_good
+            try:
+                live_gps = _read_live_gps_snapshot(max_wait_s=max_wait_s)
 
-            set_gps_status({
-                "online": live_gps["online"],
-                "has_fix": live_gps["has_fix"],
-                "last_seen_epoch": live_gps["last_seen_epoch"],
-                "fix_quality": live_gps["fix_quality"],
-                "satellites": live_gps["satellites"],
-                "hdop": live_gps["hdop"],
-                "last_good_fix": live_gps["last_good_fix"],
-            })
-            st = read_state()
-        except Exception:
-            pass
+                prev_last_good = (st.get("gps") or {}).get("last_good_fix")
+                if live_gps.get("last_good_fix") is None and prev_last_good:
+                    live_gps["last_good_fix"] = prev_last_good
 
-    st["running"] = running
-    st["pid"] = pid if running else None
-    return jsonify(st)
+                set_gps_status({
+                    "online": live_gps["online"],
+                    "has_fix": live_gps["has_fix"],
+                    "last_seen_epoch": live_gps["last_seen_epoch"],
+                    "fix_quality": live_gps["fix_quality"],
+                    "satellites": live_gps["satellites"],
+                    "hdop": live_gps["hdop"],
+                    "last_good_fix": live_gps["last_good_fix"],
+                })
+                st = read_state()
+            except Exception:
+                pass
