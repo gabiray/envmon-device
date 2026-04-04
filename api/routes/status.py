@@ -6,7 +6,6 @@ from flask import Blueprint, jsonify, request
 
 from agent.runtime.device_state import read_state, set_state, set_gps_status
 from agent.sensors.gps_reader import GPSReader
-
 from agent.simulation.state import load_simulation_state
 
 status_bp = Blueprint("status", __name__)
@@ -119,7 +118,7 @@ def status():
     # IMPORTANT:
     # - if mission is running, trust GPS snapshot maintained by logger
     # - if device is idle and simulation is armed, keep simulated standby GPS
-    # - otherwise, refresh real GPS live here
+    # - otherwise, refresh live GPS here
     if not running:
         sim_state = load_simulation_state()
         sim_armed = bool(sim_state.get("enabled") and sim_state.get("armed"))
@@ -152,3 +151,7 @@ def status():
                 st = read_state()
             except Exception:
                 pass
+
+    st["running"] = running
+    st["pid"] = pid if running else None
+    return jsonify(st)
