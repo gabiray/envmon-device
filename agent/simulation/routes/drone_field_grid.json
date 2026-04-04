@@ -2,7 +2,7 @@
   "id": "drone_field_grid",
   "label": "Drone Field Grid",
   "profile_type": "drone",
-  "description": "Grid surveillance route over an open agricultural field.",
+  "description": "Structured surveillance flight over an agricultural field using a grid pattern.",
   "duration_s": 600,
   "default_sample_hz": 2.0,
   "default_photo_every_s": 5,
@@ -11,27 +11,35 @@
   "ideal_sensor_model": true,
 
   "base_environment": {
-    "temp_c": 22.5,
-    "hum_pct": 58.0,
-    "press_hpa": 1012.8,
-    "gas_ohms": 12500.0
+    "temp_c": 22.8,
+    "hum_pct": 57.0,
+    "press_hpa": 1012.6,
+    "gas_ohms": 12400.0
   },
 
   "waypoints": [
     { "lat": 47.650100, "lon": 26.251500, "alt_m": 35.0 },
-    { "lat": 47.650700, "lon": 26.252600, "alt_m": 35.0 },
-    { "lat": 47.651300, "lon": 26.251500, "alt_m": 35.0 },
-    { "lat": 47.651900, "lon": 26.252600, "alt_m": 35.0 },
-    { "lat": 47.652500, "lon": 26.251500, "alt_m": 35.0 }
+    { "lat": 47.650700, "lon": 26.252700, "alt_m": 35.0 },
+    { "lat": 47.651200, "lon": 26.251500, "alt_m": 35.0 },
+    { "lat": 47.651800, "lon": 26.252700, "alt_m": 35.0 },
+    { "lat": 47.652300, "lon": 26.251500, "alt_m": 35.0 },
+    { "lat": 47.652900, "lon": 26.252700, "alt_m": 35.0 }
   ],
 
   "zones": [
     {
       "type": "temperature_patch",
-      "lat": 47.651200,
-      "lon": 26.252000,
-      "radius_m": 40,
-      "strength": 0.8
+      "lat": 47.651450,
+      "lon": 26.252050,
+      "radius_m": 45,
+      "strength": 0.55
+    },
+    {
+      "type": "mixed_zone",
+      "lat": 47.652200,
+      "lon": 26.252300,
+      "radius_m": 35,
+      "strength": 0.35
     }
   ],
 

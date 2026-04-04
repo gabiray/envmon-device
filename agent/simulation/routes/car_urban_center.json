@@ -1,0 +1,54 @@
+{
+  "id": "car_urban_center",
+  "label": "Car Urban Center",
+  "profile_type": "car",
+  "description": "Urban drive through a dense city area with stronger environmental variation.",
+  "duration_s": 600,
+  "default_sample_hz": 2.0,
+  "default_photo_every_s": 0,
+  "supports_gps": true,
+  "supports_images": false,
+  "ideal_sensor_model": true,
+
+  "base_environment": {
+    "temp_c": 25.4,
+    "hum_pct": 48.0,
+    "press_hpa": 1011.8,
+    "gas_ohms": 11850.0
+  },
+
+  "waypoints": [
+    { "lat": 47.639800, "lon": 26.259200, "alt_m": 295.0 },
+    { "lat": 47.640300, "lon": 26.261100, "alt_m": 296.0 },
+    { "lat": 47.641100, "lon": 26.262600, "alt_m": 296.0 },
+    { "lat": 47.642000, "lon": 26.263000, "alt_m": 297.0 },
+    { "lat": 47.642700, "lon": 26.261800, "alt_m": 297.0 },
+    { "lat": 47.643200, "lon": 26.260200, "alt_m": 296.0 }
+  ],
+
+  "zones": [
+    {
+      "type": "gas_patch",
+      "lat": 47.641500,
+      "lon": 26.262400,
+      "radius_m": 70,
+      "strength": 0.9
+    },
+    {
+      "type": "mixed_zone",
+      "lat": 47.642400,
+      "lon": 26.261300,
+      "radius_m": 50,
+      "strength": 0.5
+    },
+    {
+      "type": "temperature_patch",
+      "lat": 47.640700,
+      "lon": 26.260800,
+      "radius_m": 40,
+      "strength": 0.4
+    }
+  ],
+
+  "image_set": null
+}

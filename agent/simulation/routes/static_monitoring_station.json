@@ -1,0 +1,35 @@
+{
+  "id": "static_monitoring_station",
+  "label": "Static Monitoring Station",
+  "profile_type": "static",
+  "description": "Fixed-position environmental monitoring scenario for trend analysis over time.",
+  "duration_s": 600,
+  "default_sample_hz": 2.0,
+  "default_photo_every_s": 0,
+  "supports_gps": true,
+  "supports_images": false,
+  "ideal_sensor_model": true,
+
+  "base_environment": {
+    "temp_c": 21.7,
+    "hum_pct": 60.0,
+    "press_hpa": 1013.4,
+    "gas_ohms": 12900.0
+  },
+
+  "waypoints": [
+    { "lat": 47.645800, "lon": 26.250400, "alt_m": 310.0 }
+  ],
+
+  "zones": [
+    {
+      "type": "temperature_patch",
+      "lat": 47.645800,
+      "lon": 26.250400,
+      "radius_m": 25,
+      "strength": 0.25
+    }
+  ],
+
+  "image_set": null
+}

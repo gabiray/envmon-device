@@ -1,0 +1,47 @@
+{
+  "id": "drone_field_anomaly",
+  "label": "Drone Field Anomaly",
+  "profile_type": "drone",
+  "description": "Agricultural surveillance flight with a localized anomaly area for testing heatmaps and suspicious zones.",
+  "duration_s": 600,
+  "default_sample_hz": 2.0,
+  "default_photo_every_s": 5,
+  "supports_gps": true,
+  "supports_images": true,
+  "ideal_sensor_model": true,
+
+  "base_environment": {
+    "temp_c": 23.1,
+    "hum_pct": 55.5,
+    "press_hpa": 1012.4,
+    "gas_ohms": 12350.0
+  },
+
+  "waypoints": [
+    { "lat": 47.655000, "lon": 26.259500, "alt_m": 38.0 },
+    { "lat": 47.655700, "lon": 26.260900, "alt_m": 38.0 },
+    { "lat": 47.656400, "lon": 26.259500, "alt_m": 38.0 },
+    { "lat": 47.657100, "lon": 26.260900, "alt_m": 38.0 },
+    { "lat": 47.657800, "lon": 26.259500, "alt_m": 38.0 },
+    { "lat": 47.658500, "lon": 26.260900, "alt_m": 38.0 }
+  ],
+
+  "zones": [
+    {
+      "type": "anomaly_zone",
+      "lat": 47.656950,
+      "lon": 26.260250,
+      "radius_m": 60,
+      "strength": 0.95
+    },
+    {
+      "type": "mixed_zone",
+      "lat": 47.656300,
+      "lon": 26.260000,
+      "radius_m": 40,
+      "strength": 0.45
+    }
+  ],
+
+  "image_set": "drone"
+}
