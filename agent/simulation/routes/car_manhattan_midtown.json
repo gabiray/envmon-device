@@ -1,0 +1,60 @@
+{
+  "id": "car_manhattan_midtown",
+  "label": "Car Manhattan Midtown",
+  "profile_type": "car",
+  "description": "Urban drive simulation through Midtown Manhattan, from Columbus Circle toward Times Square and Bryant Park.",
+  "duration_s": 480,
+  "default_sample_hz": 2.0,
+  "default_photo_every_s": 0,
+  "supports_gps": true,
+  "supports_images": false,
+  "ideal_sensor_model": true,
+
+  "base_environment": {
+    "temp_c": 26.2,
+    "hum_pct": 46.0,
+    "press_hpa": 1011.5,
+    "gas_ohms": 11750.0
+  },
+
+  "waypoints": [
+    { "lat": 40.768060, "lon": -73.981940, "alt_m": 18.0 },
+    { "lat": 40.766900, "lon": -73.982400, "alt_m": 18.0 },
+    { "lat": 40.764900, "lon": -73.983200, "alt_m": 18.0 },
+    { "lat": 40.762600, "lon": -73.984100, "alt_m": 18.0 },
+    { "lat": 40.760300, "lon": -73.985100, "alt_m": 18.0 },
+    { "lat": 40.758200, "lon": -73.986000, "alt_m": 18.0 },
+    { "lat": 40.756421, "lon": -73.986488, "alt_m": 18.0 },
+    { "lat": 40.755500, "lon": -73.985300, "alt_m": 18.0 },
+    { "lat": 40.754600, "lon": -73.984100, "alt_m": 18.0 },
+    { "lat": 40.753900, "lon": -73.983200, "alt_m": 18.0 },
+    { "lat": 40.753300, "lon": -73.982400, "alt_m": 18.0 },
+    { "lat": 40.753050, "lon": -73.981700, "alt_m": 18.0 }
+  ],
+
+  "zones": [
+    {
+      "type": "gas_patch",
+      "lat": 40.756421,
+      "lon": -73.986488,
+      "radius_m": 120,
+      "strength": 0.95
+    },
+    {
+      "type": "mixed_zone",
+      "lat": 40.758800,
+      "lon": -73.985600,
+      "radius_m": 90,
+      "strength": 0.55
+    },
+    {
+      "type": "temperature_patch",
+      "lat": 40.753800,
+      "lon": -73.983000,
+      "radius_m": 70,
+      "strength": 0.40
+    }
+  ],
+
+  "image_set": null
+}
