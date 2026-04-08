@@ -7,6 +7,7 @@ from api.routes.stream import stream_bp
 from api.routes.status import status_bp
 from api.routes.info import info_bp
 from api.routes.gps import gps_bp
+from api.routes.live import live_bp
 
 from agent.runtime.device_state import set_state, read_state
 
@@ -26,6 +27,7 @@ def create_app():
     app.register_blueprint(status_bp)
     app.register_blueprint(info_bp)
     app.register_blueprint(gps_bp)
+    app.register_blueprint(live_bp)
 
     return app
 
