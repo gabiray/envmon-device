@@ -8,6 +8,10 @@ from pathlib import Path
 from agent.calibration.bme680_baseline import load_bme680_baseline
 from agent.calibration.gps_fix import wait_for_gps_fix
 from agent.runtime.device_state import set_state, set_gps_status
+from agent.runtime.live_telemetry import (
+    write_live_telemetry,
+    clear_live_telemetry,
+)
 from agent.sensors.bme680_reader import BME680Reader
 from agent.sensors.camera_capture import capture_image
 from agent.sensors.gps_reader import GPSReader
@@ -19,12 +23,11 @@ from agent.storage.mission_store import (
     MISSIONS_DIR,
 )
 
-# SIMULATION: state loader and synthetic mission engine
 from agent.simulation.state import load_simulation_state
 from agent.simulation.engine import SimulationEngine
 
 _stop_event = threading.Event()
-_stop_reason = "STOP"  # STOP or ABORT
+_stop_reason = "STOP"
 
 
 def _handle_stop(signum, frame):
@@ -36,10 +39,9 @@ def _handle_stop(signum, frame):
     _stop_event.set()
 
 
-signal.signal(signal.SIGTERM, _handle_stop)  # stop
-signal.signal(signal.SIGINT, _handle_stop)   # abort (optional)
-signal.signal(signal.SIGUSR1, _handle_stop)  # abort (preferred from API)
-
+signal.signal(signal.SIGTERM, _handle_stop)
+signal.signal(signal.SIGINT, _handle_stop)
+signal.signal(signal.SIGUSR1, _handle_stop)
 
 TELEMETRY_HEADER = [
     "ts_epoch",
@@ -97,21 +99,18 @@ def run_mission(
         "duration_s": duration_s,
         "sample_hz": sample_hz,
         "photo_every_s": photo_every_s,
-        "gps_mode": gps_mode,               # off | best_effort | required
-        "camera_mode": camera_mode,         # on | off
-        "location_mode": location_mode,     # gps | fixed | none
+        "gps_mode": gps_mode,
+        "camera_mode": camera_mode,
+        "location_mode": location_mode,
         "fixed_location": {"lat": fixed_lat, "lon": fixed_lon, "alt_m": fixed_alt},
         "gps_timeout_s": gps_timeout_s,
         "gps_stable_s": gps_stable_s,
     }
 
     warnings = []
+    clear_live_telemetry()
     set_state("ARMING", mission_id=mission_id, profile=profile, warnings=warnings)
 
-    # SIMULATION:
-    # Check whether a synthetic scenario was armed from the device terminal.
-    # If armed, the mission uses simulated GPS / telemetry / images instead
-    # of the physical hardware sensors.
     sim_state = load_simulation_state()
     sim_enabled = bool(sim_state.get("enabled") and sim_state.get("armed"))
     sim_engine = None
@@ -120,14 +119,9 @@ def run_mission(
         sim_engine = SimulationEngine.from_state(sim_state)
         emit(mission_id, "INFO", f"Simulation mode armed: {sim_engine.route_id}")
 
-    # Pre-flight baseline (optional)
     bme_baseline = load_bme680_baseline()
-
     gps_ready = None
 
-    # SIMULATION:
-    # In simulation mode, GPS is assumed to be instantly available and ideal.
-    # No real hardware GPS wait is needed.
     if sim_enabled:
         gps_ready = {
             "fix_quality": 1,
@@ -136,9 +130,6 @@ def run_mission(
             "source": "simulation",
         }
         emit(mission_id, "INFO", "Simulation GPS ready instantly.")
-
-    # REAL DEVICE:
-    # Keep the original GPS preflight behavior for real missions.
     else:
         if gps_mode == "required":
             emit(mission_id, "INFO", "Waiting for required GPS fix...")
@@ -158,13 +149,13 @@ def run_mission(
                     error="GPS required but no fix.",
                 )
                 emit(mission_id, "ERROR", "GPS required but no stable fix. Aborting mission.")
+                clear_live_telemetry()
                 return 2
         elif gps_mode == "best_effort":
             emit(mission_id, "INFO", "GPS best-effort: starting without blocking.")
         else:
             emit(mission_id, "INFO", "GPS disabled for this mission.")
 
-    # Location mode checks
     if location_mode == "fixed":
         if fixed_lat is None or fixed_lon is None:
             set_state(
@@ -175,22 +166,17 @@ def run_mission(
                 error="fixed location missing lat/lon",
             )
             emit(mission_id, "ERROR", "Location mode=fixed but fixed_lat/fixed_lon missing.")
+            clear_live_telemetry()
             return 2
 
     bme = None
     gps = None
 
-    # SIMULATION:
-    # In simulation mode, hardware readers are NOT initialized.
-    # Data will be produced by the simulation engine instead.
     if not sim_enabled:
-        # REAL DEVICE: initialize physical sensors only for real missions
         bme = BME680Reader(address=0x77)
-
         if gps_mode != "off" and location_mode == "gps":
             gps = GPSReader(port="/dev/serial0", baud=9600)
 
-    # Create mission folder
     mdir = create_mission_folder(mission_id)
     telemetry_path = mdir / "telemetry.csv"
     images_path = mdir / "images.csv"
@@ -204,12 +190,7 @@ def run_mission(
         "profile": profile,
         "bme_baseline": bme_baseline,
         "gps_ready": gps_ready,
-
-        # SIMULATION:
-        # Save simulation metadata so simulated missions can be identified later
-        # for debugging, analytics validation, or thesis documentation.
         "simulation": sim_engine.build_meta_block() if sim_enabled else {"enabled": False},
-
         "notes": "Recorded on device. Live via SSE.",
     }
     write_meta(mdir, meta)
@@ -221,13 +202,12 @@ def run_mission(
     next_photo = time.time()
     img_counter = 0
 
-    # GPS tracking helpers
     last_good_fix = None
     gps_has_fix_prev = False
     gps_online_prev = False
     last_gps_seen = None
     last_state_gps_write = 0.0
-    GPS_STALE_S = 3.0  # if no GGA for this long => GPS stream considered offline
+    GPS_STALE_S = 3.0
 
     t0 = time.time()
     exit_code = 0
@@ -237,7 +217,6 @@ def run_mission(
             now = time.time()
             elapsed_s = now - t0
 
-            # Defaults for each loop iteration
             lat = lon = alt_m = None
             fix_q = 0
             sats = 0
@@ -245,11 +224,6 @@ def run_mission(
             gps_has_fix = False
             gps_online = False
 
-            # ============================================================
-            # SIMULATION BRANCH
-            # ============================================================
-            # If a synthetic scenario is armed, all mission values come
-            # from the simulation engine instead of the hardware sensors.
             if sim_enabled:
                 if sim_engine.is_finished(elapsed_s):
                     emit(mission_id, "INFO", "Simulation route finished.")
@@ -280,7 +254,6 @@ def run_mission(
                         "alt_m": alt_m,
                     }
 
-                # SIMULATION: emit GPS startup events once, similar to the real flow
                 if (not gps_has_fix_prev) and gps_has_fix:
                     emit(mission_id, "INFO", "Simulation GPS fix active.", fix=last_good_fix)
                 gps_has_fix_prev = gps_has_fix
@@ -289,7 +262,6 @@ def run_mission(
                     emit(mission_id, "INFO", "Simulation GPS stream online.")
                 gps_online_prev = gps_online
 
-                # SIMULATION: synthetic environmental telemetry
                 b = {
                     "temp_c": sim["temp_c"],
                     "hum_pct": sim["hum_pct"],
@@ -297,13 +269,9 @@ def run_mission(
                     "gas_ohms": sim["gas_ohms"],
                 }
 
-            # ============================================================
-            # REAL DEVICE BRANCH
-            # ============================================================
             else:
                 if location_mode == "fixed":
                     lat, lon, alt_m = fixed_lat, fixed_lon, fixed_alt
-                    # fixed reference point, not a real GPS fix
                     gps_online = False
                     gps_has_fix = False
 
@@ -311,7 +279,7 @@ def run_mission(
                     pass
 
                 else:
-                    g = gps.read_gga(max_wait_s=0.25) if gps is not None else None
+                    g = gps.read_gga(max_wait_s=0.15) if gps is not None else None
 
                     if g:
                         last_gps_seen = now
@@ -358,7 +326,6 @@ def run_mission(
                         emit(mission_id, "INFO", "GPS stream online.")
                     gps_online_prev = gps_online
 
-                # REAL DEVICE: read environmental values from BME680
                 b = bme.read()
 
             row = {
@@ -371,19 +338,38 @@ def run_mission(
                 "hdop": hdop,
                 **b,
             }
+
             append_csv_row(telemetry_path, TELEMETRY_HEADER, row)
 
-            # write GPS snapshot to device state (1 Hz)
-            if now - last_state_gps_write >= 1.0:
-                set_gps_status({
-                    "online": gps_online,
-                    "has_fix": gps_has_fix,
-                    "last_seen_epoch": round(last_gps_seen, 3) if last_gps_seen else None,
-                    "fix_quality": fix_q,
-                    "satellites": sats,
-                    "hdop": hdop,
-                    "last_good_fix": last_good_fix,
-                })
+            write_live_telemetry(
+                {
+                    "mission_id": mission_id,
+                    "ts_epoch": row["ts_epoch"],
+                    "lat": row["lat"],
+                    "lon": row["lon"],
+                    "alt_m": row["alt_m"],
+                    "fix_quality": row["fix_quality"],
+                    "satellites": row["satellites"],
+                    "hdop": row["hdop"],
+                    "temp_c": row["temp_c"],
+                    "hum_pct": row["hum_pct"],
+                    "press_hpa": row["press_hpa"],
+                    "gas_ohms": row["gas_ohms"],
+                }
+            )
+
+            if now - last_state_gps_write >= 0.25:
+                set_gps_status(
+                    {
+                        "online": gps_online,
+                        "has_fix": gps_has_fix,
+                        "last_seen_epoch": round(last_gps_seen, 3) if last_gps_seen else None,
+                        "fix_quality": fix_q,
+                        "satellites": sats,
+                        "hdop": hdop,
+                        "last_good_fix": last_good_fix,
+                    }
+                )
                 last_state_gps_write = now
 
             if camera_mode == "on" and photo_every_s > 0 and now >= next_photo:
@@ -394,9 +380,6 @@ def run_mission(
                 try:
                     captured = False
 
-                    # SIMULATION:
-                    # For simulated drone missions, copy a predefined image
-                    # from the simulation assets instead of using the camera.
                     if sim_enabled:
                         captured = sim_engine.capture_image(
                             output_path=out_path,
@@ -405,18 +388,21 @@ def run_mission(
                             lon=lon if lon is not None else 0.0,
                         )
                     else:
-                        # REAL DEVICE: capture a real image from the Pi camera
                         capture_image(out_path, width=1280, height=720, timeout_ms=600)
                         captured = True
 
                     if captured:
-                        append_csv_row(images_path, IMAGES_HEADER, {
-                            "ts_epoch": round(now, 3),
-                            "lat": lat,
-                            "lon": lon,
-                            "alt_m": alt_m,
-                            "filename": filename,
-                        })
+                        append_csv_row(
+                            images_path,
+                            IMAGES_HEADER,
+                            {
+                                "ts_epoch": round(now, 3),
+                                "lat": lat,
+                                "lon": lon,
+                                "alt_m": alt_m,
+                                "filename": filename,
+                            },
+                        )
                     else:
                         emit(mission_id, "WARN", "No simulated image available for this capture.")
                 except Exception as e:
@@ -426,7 +412,6 @@ def run_mission(
 
             time.sleep(dt)
 
-        # stop outcome
         if _stop_event.is_set() and _stop_reason == "ABORT":
             set_state("ABORTED", mission_id=mission_id, profile=profile, warnings=warnings)
             emit(mission_id, "WARN", "Mission aborted by user.")
@@ -446,9 +431,6 @@ def run_mission(
 
         try:
             if sim_enabled and sim_engine is not None:
-                # SIMULATION:
-                # Disarm the current scenario after the mission finishes so the
-                # next mission does not reuse it accidentally.
                 sim_engine.finalize()
         except Exception:
             pass
@@ -458,7 +440,7 @@ def run_mission(
         meta["last_good_fix"] = last_good_fix
         write_meta(mdir, meta)
 
-        # back to IDLE
+        clear_live_telemetry()
         set_state("IDLE", mission_id=None, profile=None, warnings=[])
 
     return exit_code
