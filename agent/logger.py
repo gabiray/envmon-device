@@ -109,7 +109,7 @@ def run_mission(
 
     warnings = []
     clear_live_telemetry()
-    set_state("ARMING", mission_id=mission_id, profile=profile, warnings=warnings)
+    set_state("ARMING", mission_id=mission_id, mission_name=mission_name, profile=profile, warnings=warnings)
 
     sim_state = load_simulation_state()
     sim_enabled = bool(sim_state.get("enabled") and sim_state.get("armed"))
@@ -195,7 +195,7 @@ def run_mission(
     }
     write_meta(mdir, meta)
 
-    set_state("RUNNING", mission_id=mission_id, profile=profile, warnings=warnings)
+    set_state("RUNNING", mission_id=mission_id, mission_name=mission_name, profile=profile, warnings=warnings)
     emit(mission_id, "INFO", "Mission started.")
 
     dt = 1.0 / max(sample_hz, 0.1)
@@ -413,13 +413,13 @@ def run_mission(
             time.sleep(dt)
 
         if _stop_event.is_set() and _stop_reason == "ABORT":
-            set_state("ABORTED", mission_id=mission_id, profile=profile, warnings=warnings)
+            set_state("ABORTED", mission_id=mission_id, mission_name=mission_name, profile=profile, warnings=warnings)
             emit(mission_id, "WARN", "Mission aborted by user.")
         elif _stop_event.is_set():
-            set_state("COMPLETED", mission_id=mission_id, profile=profile, warnings=warnings)
+            set_state("COMPLETED", mission_id=mission_id, mission_name=mission_name, profile=profile, warnings=warnings)
             emit(mission_id, "INFO", "Mission stopped by user.")
         else:
-            set_state("COMPLETED", mission_id=mission_id, profile=profile, warnings=warnings)
+            set_state("COMPLETED", mission_id=mission_id, mission_name=mission_name, profile=profile, warnings=warnings)
             emit(mission_id, "INFO", "Mission finished (timer).")
 
     finally:
@@ -441,7 +441,7 @@ def run_mission(
         write_meta(mdir, meta)
 
         clear_live_telemetry()
-        set_state("IDLE", mission_id=None, profile=None, warnings=[])
+        set_state("IDLE", mission_id=None, mission_name=None, profile=None, warnings=[])
 
     return exit_code
 

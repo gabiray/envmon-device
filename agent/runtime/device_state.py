@@ -13,6 +13,7 @@ def default_state() -> dict:
         "state": "IDLE",
         "since_epoch": int(time.time()),
         "mission_id": None,
+        "mission_name": None,
         "profile": None,
         "warnings": [],
         "error": None,
@@ -73,6 +74,7 @@ def write_state(state: dict) -> None:
 def set_state(
     new_state: str,
     mission_id: str | None = None,
+    mission_name: str | None = None,
     profile: dict | None = None,
     warnings: list | None = None,
     error: str | None = None,
@@ -88,6 +90,7 @@ def set_state(
     st["state"] = new_state
     st["since_epoch"] = int(time.time())
     st["mission_id"] = mission_id
+    st["mission_name"] = mission_name
     st["profile"] = profile
     st["warnings"] = warnings or []
     st["error"] = error
