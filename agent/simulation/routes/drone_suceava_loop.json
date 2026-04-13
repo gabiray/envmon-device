@@ -1,6 +1,6 @@
 {
-  "id": "drone_suceava_plotaroute_loop",
-  "label": "Drone Suceava Plotaroute Loop",
+  "id": "drone_suceava_loop",
+  "label": "Drone Suceava Loop",
   "profile_type": "drone",
   "description": "Simulated drone mission based on a Plotaroute GPX track near Suceava, with gently varying flight altitude for a more realistic aerial path.",
   "duration_s": 510,
