@@ -423,3 +423,42 @@ def delete_mission(mission_id: str):
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+
+@missions_bp.delete("/missions")
+def delete_all_missions():
+    running, pid = _is_running()
+
+    if running:
+        return jsonify({
+            "ok": False,
+            "error": "Cannot delete all missions while a mission is running",
+            "pid": pid,
+        }), 409
+
+    MISSIONS_DIR.mkdir(parents=True, exist_ok=True)
+
+    deleted = []
+    failed = []
+
+    for mission_dir in MISSIONS_DIR.iterdir():
+        if not mission_dir.is_dir():
+            continue
+
+        mission_id = mission_dir.name
+
+        try:
+            shutil.rmtree(mission_dir)
+            deleted.append(mission_id)
+        except Exception as e:
+            failed.append({
+                "mission_id": mission_id,
+                "error": str(e),
+            })
+
+    return jsonify({
+        "ok": len(failed) == 0,
+        "deleted_count": len(deleted),
+        "failed_count": len(failed),
+        "deleted_missions": deleted,
+        "failed": failed,
+    }), 200 if not failed else 207
