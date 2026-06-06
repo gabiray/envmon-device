@@ -2,19 +2,61 @@
   "id": "drone_suceava_loop",
   "label": "Drone Suceava Loop",
   "profile_type": "drone",
-  "description": "Simulated drone mission based on a Plotaroute GPX track near Suceava, with gently varying flight altitude for a more realistic aerial path.",
+  "description": "Realistic simulated drone survey near Suceava, based on a loop route with AGL altitude, slight GPS jitter, environmental drift and anomaly zones.",
   "duration_s": 510,
   "default_sample_hz": 2.0,
   "default_photo_every_s": 5,
   "supports_gps": true,
   "supports_images": true,
-  "ideal_sensor_model": true,
+  "ideal_sensor_model": false,
 
   "base_environment": {
     "temp_c": 22.9,
     "hum_pct": 56.0,
     "press_hpa": 1012.2,
     "gas_ohms": 12380.0
+  },
+
+  "motion_model": {
+    "type": "drone_survey",
+    "speed_variation_pct": 0.06,
+    "duration_variation_pct": 0.08,
+    "seed": 42
+  },
+
+  "altitude_model": {
+    "mode": "agl_over_ground",
+    "default_ground_alt_m": 400.0,
+    "vertical_variation_m": 0.9,
+    "gps_vertical_noise_m": 1.8
+  },
+
+  "gps_model": {
+    "horizontal_noise_m": 1.1,
+    "vertical_noise_m": 1.8,
+    "hdop_min": 0.7,
+    "hdop_max": 1.4,
+    "satellites_min": 9,
+    "satellites_max": 14,
+    "dropout_probability": 0.0
+  },
+
+  "sensor_model": {
+    "pressure_reference": "sea_level",
+    "noise": {
+      "temp_c": 0.08,
+      "hum_pct": 0.45,
+      "press_hpa": 0.05,
+      "gas_ohms": 130
+    },
+    "drift_per_min": {
+      "temp_c": 0.01,
+      "hum_pct": -0.015,
+      "press_hpa": 0.002,
+      "gas_ohms": -8
+    },
+    "response_lag_s": 4.0,
+    "electronics_heat_c": 0.25
   },
 
   "waypoints": [
@@ -95,18 +137,43 @@
 
   "zones": [
     {
-      "type": "mixed_zone",
+      "type": "vegetation_stress",
       "lat": 47.6319500,
       "lon": 26.2602000,
       "radius_m": 55,
-      "strength": 0.40
+      "strength": 0.55,
+      "effects": {
+        "temp_c": 1.2,
+        "hum_pct": -3.5,
+        "press_hpa": 0.0,
+        "gas_ohms": -950
+      }
     },
     {
       "type": "temperature_patch",
       "lat": 47.6289500,
       "lon": 26.2593000,
       "radius_m": 45,
-      "strength": 0.35
+      "strength": 0.40,
+      "effects": {
+        "temp_c": 1.4,
+        "hum_pct": -2.0,
+        "press_hpa": 0.0,
+        "gas_ohms": -350
+      }
+    },
+    {
+      "type": "mixed_zone",
+      "lat": 47.6276500,
+      "lon": 26.2547000,
+      "radius_m": 50,
+      "strength": 0.35,
+      "effects": {
+        "temp_c": 0.5,
+        "hum_pct": -1.2,
+        "press_hpa": 0.02,
+        "gas_ohms": -450
+      }
     }
   ],
 
