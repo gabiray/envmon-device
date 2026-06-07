@@ -2,18 +2,60 @@
   "id": "car_suceava_traffic_loop",
   "label": "Car Suceava Traffic Loop",
   "profile_type": "car",
-  "description": "Urban car route based on a Plotaroute GPX through Suceava, with denser waypoint clusters in traffic-prone areas such as intersections and roundabouts to simulate slowdowns and repeated telemetry samples.",
+  "description": "Realistic urban car route through Suceava, with traffic-like speed variation, GPS jitter, short stops and pollution/congestion environmental zones.",
   "duration_s": 900,
   "default_sample_hz": 2.0,
   "default_photo_every_s": 0,
   "supports_gps": true,
   "supports_images": false,
-  "ideal_sensor_model": true,
+  "ideal_sensor_model": false,
+
   "base_environment": {
     "temp_c": 24.8,
     "hum_pct": 49.0,
     "press_hpa": 1011.9,
     "gas_ohms": 11820.0
+  },
+
+  "speed_model": {
+    "type": "city_traffic_loop",
+    "max_speed_kmh": 60,
+    "cruise_speed_kmh": 32,
+    "traffic_speed_kmh": 16,
+    "speed_variation_pct": 0.22,
+    "duration_variation_pct": 0.08,
+    "stop_probability": 0.18,
+    "stop_duration_s_min": 5,
+    "stop_duration_s_max": 16,
+    "seed": 42
+  },
+
+  "gps_model": {
+    "horizontal_noise_m": 3.0,
+    "vertical_noise_m": 3.5,
+    "hdop_min": 1.0,
+    "hdop_max": 2.8,
+    "satellites_min": 6,
+    "satellites_max": 12,
+    "dropout_probability": 0.0
+  },
+
+  "sensor_model": {
+    "pressure_reference": "local",
+    "noise": {
+      "temp_c": 0.14,
+      "hum_pct": 0.7,
+      "press_hpa": 0.08,
+      "gas_ohms": 220
+    },
+    "drift_per_min": {
+      "temp_c": 0.012,
+      "hum_pct": -0.018,
+      "press_hpa": 0.002,
+      "gas_ohms": -18
+    },
+    "response_lag_s": 6.0,
+    "electronics_heat_c": 0.35
   },
 
   "waypoints": [
@@ -170,11 +212,71 @@
   ],
 
   "zones": [
-    { "type": "gas_patch", "lat": 47.640900, "lon": 26.249500, "radius_m": 85, "strength": 0.75 },
-    { "type": "mixed_zone", "lat": 47.646100, "lon": 26.257200, "radius_m": 65, "strength": 0.55 },
-    { "type": "gas_patch", "lat": 47.651200, "lon": 26.260700, "radius_m": 95, "strength": 0.9 },
-    { "type": "mixed_zone", "lat": 47.659900, "lon": 26.265300, "radius_m": 110, "strength": 0.6 },
-    { "type": "temperature_patch", "lat": 47.654600, "lon": 26.260600, "radius_m": 75, "strength": 0.35 }
+    {
+      "type": "traffic_pollution",
+      "lat": 47.640900,
+      "lon": 26.249500,
+      "radius_m": 85,
+      "strength": 0.75,
+      "effects": {
+        "temp_c": 0.25,
+        "hum_pct": -0.8,
+        "press_hpa": 0.0,
+        "gas_ohms": -2600
+      }
+    },
+    {
+      "type": "congestion_zone",
+      "lat": 47.646100,
+      "lon": 26.257200,
+      "radius_m": 65,
+      "strength": 0.55,
+      "effects": {
+        "temp_c": 0.45,
+        "hum_pct": -1.2,
+        "press_hpa": 0.02,
+        "gas_ohms": -1500
+      }
+    },
+    {
+      "type": "traffic_pollution",
+      "lat": 47.651200,
+      "lon": 26.260700,
+      "radius_m": 95,
+      "strength": 0.90,
+      "effects": {
+        "temp_c": 0.35,
+        "hum_pct": -1.0,
+        "press_hpa": 0.0,
+        "gas_ohms": -3300
+      }
+    },
+    {
+      "type": "congestion_zone",
+      "lat": 47.659900,
+      "lon": 26.265300,
+      "radius_m": 110,
+      "strength": 0.60,
+      "effects": {
+        "temp_c": 0.55,
+        "hum_pct": -1.3,
+        "press_hpa": 0.02,
+        "gas_ohms": -1800
+      }
+    },
+    {
+      "type": "temperature_patch",
+      "lat": 47.654600,
+      "lon": 26.260600,
+      "radius_m": 75,
+      "strength": 0.35,
+      "effects": {
+        "temp_c": 1.1,
+        "hum_pct": -1.6,
+        "press_hpa": 0.0,
+        "gas_ohms": -450
+      }
+    }
   ],
 
   "image_set": null

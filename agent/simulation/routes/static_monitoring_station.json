@@ -1,35 +1,109 @@
 {
   "id": "static_monitoring_station",
-  "label": "Static Monitoring Station",
+  "label": "Static Monitoring Station - Parc Tatarasi",
   "profile_type": "static",
-  "description": "Fixed-position environmental monitoring scenario for trend analysis over time.",
-  "duration_s": 600,
+  "description": "Fixed environmental monitoring station placed in Parc Tatarasi, Suceava, with temporal sensor variation, small GPS jitter and local air quality events.",
+  "duration_s": 900,
   "default_sample_hz": 2.0,
   "default_photo_every_s": 0,
   "supports_gps": true,
   "supports_images": false,
-  "ideal_sensor_model": true,
+  "ideal_sensor_model": false,
 
   "base_environment": {
-    "temp_c": 21.7,
-    "hum_pct": 60.0,
-    "press_hpa": 1013.4,
-    "gas_ohms": 12900.0
+    "temp_c": 23.6,
+    "hum_pct": 53.5,
+    "press_hpa": 977.8,
+    "gas_ohms": 13200.0
   },
 
-  "waypoints": [
-    { "lat": 47.645800, "lon": 26.250400, "alt_m": 310.0 }
-  ],
+  "gps_model": {
+    "horizontal_noise_m": 0.8,
+    "vertical_noise_m": 1.5,
+    "hdop_min": 0.8,
+    "hdop_max": 1.6,
+    "satellites_min": 8,
+    "satellites_max": 13,
+    "dropout_probability": 0.0,
+    "seed": 42
+  },
 
-  "zones": [
+  "sensor_model": {
+    "pressure_reference": "local",
+    "seed": 42,
+    "noise": {
+      "temp_c": 0.05,
+      "hum_pct": 0.35,
+      "press_hpa": 0.04,
+      "gas_ohms": 110
+    },
+    "drift_per_min": {
+      "temp_c": 0.012,
+      "hum_pct": -0.018,
+      "press_hpa": 0.001,
+      "gas_ohms": -5
+    },
+    "cycle": {
+      "enabled": true,
+      "period_s": 900,
+      "temp_c_amplitude": 0.45,
+      "hum_pct_amplitude": 1.4,
+      "press_hpa_amplitude": 0.08,
+      "gas_ohms_amplitude": 250
+    },
+    "response_lag_s": 8.0,
+    "electronics_heat_c": 0.2
+  },
+
+  "events": [
     {
-      "type": "temperature_patch",
-      "lat": 47.645800,
-      "lon": 26.250400,
-      "radius_m": 25,
-      "strength": 0.25
+      "type": "air_quality_drop",
+      "start_s": 240,
+      "duration_s": 150,
+      "strength": 0.85,
+      "effects": {
+        "temp_c": 0.15,
+        "hum_pct": -0.5,
+        "press_hpa": 0.0,
+        "gas_ohms": -2600
+      }
+    },
+    {
+      "type": "humidity_change",
+      "start_s": 570,
+      "duration_s": 180,
+      "strength": 0.65,
+      "effects": {
+        "temp_c": -0.2,
+        "hum_pct": 2.8,
+        "press_hpa": 0.02,
+        "gas_ohms": 300
+      }
+    },
+    {
+      "type": "temperature_rise",
+      "start_s": 720,
+      "duration_s": 120,
+      "strength": 0.55,
+      "effects": {
+        "temp_c": 0.8,
+        "hum_pct": -1.3,
+        "press_hpa": 0.0,
+        "gas_ohms": -250
+      }
     }
   ],
+
+  "waypoints": [
+    {
+      "lat": 47.636768,
+      "lon": 26.263323,
+      "alt_m": 331.0,
+      "location_name": "Parc Tatarasi, Suceava"
+    }
+  ],
+
+  "zones": [],
 
   "image_set": null
 }

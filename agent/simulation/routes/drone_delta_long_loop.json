@@ -2,19 +2,61 @@
   "id": "drone_delta_long_loop",
   "label": "Drone Delta Long Loop",
   "profile_type": "drone",
-  "description": "Simulated drone mission based on a long Plotaroute GPX track, with gently varying flight altitude for a more realistic aerial survey path.",
+  "description": "Realistic long drone survey route in the Danube Delta area, with AGL flight altitude, small GPS jitter, smooth speed variation, environmental drift and anomaly zones.",
   "duration_s": 1500,
   "default_sample_hz": 2.0,
   "default_photo_every_s": 5,
   "supports_gps": true,
   "supports_images": true,
-  "ideal_sensor_model": true,
+  "ideal_sensor_model": false,
 
   "base_environment": {
     "temp_c": 23.8,
     "hum_pct": 58.0,
     "press_hpa": 1012.1,
     "gas_ohms": 12450.0
+  },
+
+  "motion_model": {
+    "type": "drone_survey_long",
+    "speed_variation_pct": 0.05,
+    "duration_variation_pct": 0.06,
+    "seed": 42
+  },
+
+  "altitude_model": {
+    "mode": "agl_over_ground",
+    "default_ground_alt_m": 2.0,
+    "vertical_variation_m": 1.1,
+    "gps_vertical_noise_m": 1.8
+  },
+
+  "gps_model": {
+    "horizontal_noise_m": 1.3,
+    "vertical_noise_m": 1.8,
+    "hdop_min": 0.7,
+    "hdop_max": 1.5,
+    "satellites_min": 9,
+    "satellites_max": 14,
+    "dropout_probability": 0.0
+  },
+
+  "sensor_model": {
+    "pressure_reference": "local",
+    "noise": {
+      "temp_c": 0.08,
+      "hum_pct": 0.5,
+      "press_hpa": 0.05,
+      "gas_ohms": 140
+    },
+    "drift_per_min": {
+      "temp_c": 0.006,
+      "hum_pct": -0.008,
+      "press_hpa": 0.001,
+      "gas_ohms": -6
+    },
+    "response_lag_s": 4.5,
+    "electronics_heat_c": 0.25
   },
 
   "waypoints": [
@@ -124,21 +166,39 @@
       "lat": 45.0715000,
       "lon": 28.7605000,
       "radius_m": 120,
-      "strength": 0.45
+      "strength": 0.45,
+      "effects": {
+        "temp_c": 1.1,
+        "hum_pct": -2.2,
+        "press_hpa": 0.0,
+        "gas_ohms": -300
+      }
     },
     {
       "type": "mixed_zone",
       "lat": 45.0520000,
       "lon": 28.7605000,
       "radius_m": 140,
-      "strength": 0.55
+      "strength": 0.55,
+      "effects": {
+        "temp_c": 0.5,
+        "hum_pct": -1.0,
+        "press_hpa": 0.02,
+        "gas_ohms": -550
+      }
     },
     {
-      "type": "anomaly_zone",
+      "type": "vegetation_stress",
       "lat": 45.0819000,
       "lon": 28.7644000,
       "radius_m": 110,
-      "strength": 0.65
+      "strength": 0.65,
+      "effects": {
+        "temp_c": 1.4,
+        "hum_pct": -3.8,
+        "press_hpa": 0.0,
+        "gas_ohms": -1200
+      }
     }
   ],
 

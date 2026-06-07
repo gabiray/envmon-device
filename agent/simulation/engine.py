@@ -8,12 +8,13 @@ from agent.simulation.sim_utils import (
     zone_influence,
 )
 from agent.simulation.engine_drone import DroneSimulationEngine
+from agent.simulation.engine_car import CarSimulationEngine
+from agent.simulation.engine_static import StaticSimulationEngine
 
 
 class GenericSimulationEngine:
     """
-    Fallback engine for car / bicycle / static until those profiles get
-    their own dedicated simulation engines.
+    Fallback engine for bicycle / static until those profiles get dedicated engines.
     """
 
     def __init__(self, route: dict, sim_state: dict):
@@ -64,7 +65,13 @@ class GenericSimulationEngine:
             "alt_m": pos["alt_m"],
         }
 
-    def _environment_at(self, elapsed_s: float, lat: float, lon: float, alt_m: float) -> dict:
+    def _environment_at(
+        self,
+        elapsed_s: float,
+        lat: float,
+        lon: float,
+        alt_m: float,
+    ) -> dict:
         base_temp = to_float(self.base_environment.get("temp_c"), 20.0)
         base_hum = to_float(self.base_environment.get("hum_pct"), 55.0)
         base_press = to_float(self.base_environment.get("press_hpa"), 1013.0)
@@ -78,6 +85,14 @@ class GenericSimulationEngine:
         for zone in self.zones:
             effect = zone_influence(zone, lat, lon)
             ztype = str(zone.get("type") or "").strip().lower()
+
+            explicit = zone.get("effects")
+            if isinstance(explicit, dict):
+                temp_local += to_float(explicit.get("temp_c"), 0.0) * effect
+                hum_local += to_float(explicit.get("hum_pct"), 0.0) * effect
+                press_local += to_float(explicit.get("press_hpa"), 0.0) * effect
+                gas_local += to_float(explicit.get("gas_ohms"), 0.0) * effect
+                continue
 
             if ztype == "temperature_patch":
                 temp_local += 2.0 * effect
@@ -114,6 +129,7 @@ class GenericSimulationEngine:
 
     def sample(self, elapsed_s: float) -> dict:
         pos = self._position_at(elapsed_s)
+
         env = self._environment_at(
             elapsed_s=elapsed_s,
             lat=pos["lat"],
@@ -126,8 +142,8 @@ class GenericSimulationEngine:
             "lon": pos["lon"],
             "alt_m": pos["alt_m"],
             "fix_quality": 1,
-            "satellites": 12,
-            "hdop": 0.8,
+            "satellites": 10,
+            "hdop": 1.2,
             **env,
         }
 
@@ -162,7 +178,7 @@ class SimulationEngine:
     """
     Public simulation engine used by logger.py.
 
-    This wrapper keeps the same interface as before:
+    Keeps the same interface:
     - from_state(...)
     - sample(...)
     - capture_image(...)
@@ -181,6 +197,10 @@ class SimulationEngine:
 
         if profile_type == "drone":
             self.impl = DroneSimulationEngine(route, sim_state)
+        elif profile_type == "car":
+            self.impl = CarSimulationEngine(route, sim_state)
+        elif profile_type == "static":
+            self.impl = StaticSimulationEngine(route, sim_state)
         else:
             self.impl = GenericSimulationEngine(route, sim_state)
 
@@ -208,6 +228,5 @@ class SimulationEngine:
         try:
             self.impl.finalize()
         finally:
-            # Keep the old behavior: simulation is consumed by one mission.
             disarm_simulation()
             

@@ -2,19 +2,60 @@
   "id": "car_suceava_city_drive",
   "label": "Car Suceava City Drive",
   "profile_type": "car",
-  "description": "Realistic city drive route based on ordered track points following streets in Suceava.",
-  "duration_s": 600,
+  "description": "Realistic city drive route based on ordered track points following streets in Suceava, with urban speed variation, GPS jitter and traffic-related environmental changes.",
+  "duration_s": 420,
   "default_sample_hz": 2.0,
   "default_photo_every_s": 0,
   "supports_gps": true,
   "supports_images": false,
-  "ideal_sensor_model": true,
+  "ideal_sensor_model": false,
 
   "base_environment": {
     "temp_c": 24.8,
     "hum_pct": 49.0,
     "press_hpa": 1012.1,
     "gas_ohms": 11850.0
+  },
+
+  "speed_model": {
+    "type": "city_drive",
+    "max_speed_kmh": 60,
+    "cruise_speed_kmh": 35,
+    "traffic_speed_kmh": 18,
+    "speed_variation_pct": 0.18,
+    "duration_variation_pct": 0.06,
+    "stop_probability": 0.10,
+    "stop_duration_s_min": 4,
+    "stop_duration_s_max": 12,
+    "seed": 42
+  },
+
+  "gps_model": {
+    "horizontal_noise_m": 2.5,
+    "vertical_noise_m": 3.0,
+    "hdop_min": 0.9,
+    "hdop_max": 2.4,
+    "satellites_min": 6,
+    "satellites_max": 12,
+    "dropout_probability": 0.0
+  },
+
+  "sensor_model": {
+    "pressure_reference": "local",
+    "noise": {
+      "temp_c": 0.12,
+      "hum_pct": 0.6,
+      "press_hpa": 0.08,
+      "gas_ohms": 180
+    },
+    "drift_per_min": {
+      "temp_c": 0.015,
+      "hum_pct": -0.02,
+      "press_hpa": 0.002,
+      "gas_ohms": -16
+    },
+    "response_lag_s": 6.0,
+    "electronics_heat_c": 0.3
   },
 
   "waypoints": [
@@ -138,25 +179,43 @@
 
   "zones": [
     {
-      "type": "gas_patch",
+      "type": "traffic_pollution",
       "lat": 47.64675,
       "lon": 26.26432,
       "radius_m": 120,
-      "strength": 0.85
+      "strength": 0.85,
+      "effects": {
+        "temp_c": 0.3,
+        "hum_pct": -1.0,
+        "press_hpa": 0.0,
+        "gas_ohms": -3500
+      }
     },
     {
-      "type": "mixed_zone",
+      "type": "congestion_zone",
       "lat": 47.65390,
       "lon": 26.26040,
       "radius_m": 140,
-      "strength": 0.55
+      "strength": 0.55,
+      "effects": {
+        "temp_c": 0.5,
+        "hum_pct": -1.2,
+        "press_hpa": 0.02,
+        "gas_ohms": -1300
+      }
     },
     {
       "type": "temperature_patch",
       "lat": 47.65920,
       "lon": 26.26740,
       "radius_m": 90,
-      "strength": 0.40
+      "strength": 0.40,
+      "effects": {
+        "temp_c": 1.2,
+        "hum_pct": -1.7,
+        "press_hpa": 0.0,
+        "gas_ohms": -450
+      }
     }
   ],
 
